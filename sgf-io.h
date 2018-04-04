@@ -15,6 +15,7 @@
 
 #define READ_MODE       (0)
 #define WRITE_MODE      (1)
+#define APPEND_MODE     (2)
 
 struct OFILE            /* "Un fichier ouvert"                  */
     {                   /* ------------------------------------ */
@@ -42,7 +43,7 @@ typedef struct OFILE OFILE;
  ************************************************************/
 
     void sgf_puts (OFILE* f, char *s);
-    void sgf_putc (OFILE* f, char  c);
+    int sgf_putc (OFILE* f, char  c);
 
 /************************************************************
  *  Lire un caractère sur un fichier ouvert en lecture.
@@ -56,7 +57,7 @@ typedef struct OFILE OFILE;
  ************************************************************/
 
     OFILE* sgf_open  (const char *nom, int mode);
-    void   sgf_close (OFILE* f);
+    int   sgf_close (OFILE* f);
 
 /**********************************************************************
  * Initialiser le Système de Gestion de Fichiers.

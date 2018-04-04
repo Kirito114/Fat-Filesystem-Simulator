@@ -190,7 +190,7 @@ void list_directory (void)
         read_block(adr, &b.data);
         for(j = 0; j< BLOCK_DIR_SIZE; j++){
             if(b.dir[j].inode > 0){
-               read_block(b.dir[j].inode, b2.data);
+               read_block(b.dir[j].inode, &b2.data);
                 printf("- File : %s : %d\n", b.dir[j].name, b2.inode.length);
             }
         }

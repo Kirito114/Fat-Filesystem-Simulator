@@ -67,9 +67,9 @@ int sgf_getc(OFILE* file)
 
     /* si le buffer est vide, le remplir */
     if ((file->ptr % BLOCK_SIZE) == 0)
-        {
+    {
         sgf_read_bloc(file, file->ptr / BLOCK_SIZE);
-        }
+    }
     
     c = file->buffer[ (file->ptr % BLOCK_SIZE) ];
     file->ptr ++;
@@ -89,25 +89,60 @@ int sgf_getc(OFILE* file)
  par "f".
  *********************************************************************/
 
-void sgf_append_block(OFILE* f)
-    {
+int sgf_append_block(OFILE* f)
+{
     TBLOCK b;
     int adr;
 
-    panic("%s: ligne %d: fonction non terminee", __FILE__, __LINE__);
+    if(f->mode == WRITE_MODE){
+        adr = alloc_block();
+        if(adr < 0) return -1;
+        write_block(adr, &f->buffer);
+        set_fat(adr, FAT_EOF);
+        if(f->first == FAT_EOF)
+            f->first = f->last = adr;
+        else{
+            set_fat(f->last, adr);
+            f->last = adr;
+        } 
+    }else if(f->mode == APPEND_MODE){
+        /*On ecrase le bloc courant et on passe en write mode*/
+        write_block(f->last, &f->buffer);
+        f->mode = WRITE_MODE;
     }
+
+    f->length = f->ptr;
+    b.inode.length = f->ptr;
+    b.inode.first = f->first;
+    b.inode.last = f->last;
+    write_block(f->inode, &b.data);
+
+    return 0;
+}
 
 
 /**********************************************************************
  Ecrire le caractère "c" dans le fichier ouvert décrit par "file".
  *********************************************************************/
 
-void sgf_putc(OFILE* file, char  c)
-    {
-    assert (file->mode == WRITE_MODE);
+int sgf_putc(OFILE* file, char  c)
+{
+    assert (file->mode == WRITE_MODE || file->mode == APPEND_MODE);
 
-    panic("%s: ligne %d: fonction non terminee", __FILE__, __LINE__);
+    /*On insere le caractere dans le buffer*/
+    file->buffer[(file->ptr % BLOCK_SIZE)] = c;
+    file->ptr++;
+
+    /*On test si le buffer est plein*/
+    if((file->ptr % BLOCK_SIZE) == 0){
+        printf("[sgf_putc] : Buffer va etre appended\n");
+        if(sgf_append_block(file) < 0){
+            return -1;
+        }
     }
+
+    return 0;
+}
 
 
 /**********************************************************************
@@ -136,13 +171,26 @@ void sgf_puts(OFILE* file, char* s)
  Détruire un fichier.
  ************************************************************/
 
-void sgf_remove(int  adr_inode)
-    {
+void sgf_remove(int adr_inode)
+{
     TBLOCK b;
-    int adr, k;
-    
-    printf("%s: ligne %d: fonction non terminee", __FILE__, __LINE__);
-    }
+    int adr, suivant;
+    /*TO DO Parcourir la table FAT a partir du premier bloc du fichier, free chaque bloc dans la FAT*/
+    read_block(adr_inode, &b.data);
+    adr = b.inode.first;
+
+    do{
+        suivant = get_fat(adr);
+        set_fat(adr, FAT_FREE);
+        adr = suivant;
+    }while(suivant != FAT_EOF);
+
+    set_fat(adr_inode, FAT_FREE);
+
+    /*TO DO Afficher l etat de la table FAT (Nombre de blocs libres)*/
+    printf("FAT State:\n");
+    printf("    NB_FREE_BLOCKS : %d\n",get_free_fat_blocks_count());
+}
 
 
 /************************************************************
@@ -150,7 +198,7 @@ void sgf_remove(int  adr_inode)
  ************************************************************/
 
 static  OFILE*  sgf_open_write(const char* nom)
-    {
+{
     int inode, oldinode;
     OFILE* file;
     TBLOCK b;
@@ -184,7 +232,7 @@ static  OFILE*  sgf_open_write(const char* nom)
     file->ptr     = 0;
 
     return (file);
-    }
+}
 
 
 /************************************************************
@@ -192,7 +240,7 @@ static  OFILE*  sgf_open_write(const char* nom)
  ************************************************************/
 
 static  OFILE*  sgf_open_read(const char* nom)
-    {
+{
     int inode;
     OFILE* file;
     TBLOCK b;
@@ -216,7 +264,47 @@ static  OFILE*  sgf_open_read(const char* nom)
     file->ptr     = 0;
     
     return (file);
+}
+
+/************************************************************
+ Ouvrir un fichier en append (NULL si échec).
+ ************************************************************/
+
+static  OFILE*  sgf_open_append(const char* nom)
+{
+    int inode;
+    OFILE* file;
+    TBLOCK b;
+    
+    /* Chercher le fichier dans le répertoire */
+    inode = find_inode(nom);
+    if (inode < 0) return (NULL);
+    
+    /* lire le inode */
+    read_block(inode, &b.data);
+    
+    /* Allouer une structure OFILE */
+    file = malloc(sizeof(struct OFILE));
+    if (file == NULL) return (NULL);
+    
+    file->length  = b.inode.length;
+    file->first   = b.inode.first;
+    file->last    = b.inode.last;
+    file->inode   = inode;
+    file->mode    = APPEND_MODE;
+    file->ptr     = file->length;
+
+    /*Chargement du bloc incomplet*/
+    if((file->length%BLOCK_SIZE) != 0){
+        printf("[sgf_open_append] : reading incomplete block\n");
+        read_block(file->last, &file->buffer);
+        printf("[sgf_open_append] : sucessfully read incomplete block\n");
+    }else{
+        file->mode = WRITE_MODE;
     }
+    
+    return (file);
+}
 
 
 /************************************************************
@@ -229,6 +317,7 @@ OFILE* sgf_open (const char* nom, int mode)
         {
         case READ_MODE:  return sgf_open_read(nom);
         case WRITE_MODE: return sgf_open_write(nom);
+        case APPEND_MODE: return sgf_open_append(nom);
         default:         return (NULL);
         }
     }
@@ -238,10 +327,22 @@ OFILE* sgf_open (const char* nom, int mode)
  Fermer un fichier ouvert.
  ************************************************************/
 
-void sgf_close(OFILE* file)
-    {
-    printf("%s: ligne %d: fonction non terminee", __FILE__, __LINE__);
+int sgf_close(OFILE* file)
+{
+    if(file->mode ==  WRITE_MODE || file->mode == APPEND_MODE){
+        if((file->ptr % BLOCK_SIZE) != 0){
+            /*Le append block modifie deja l inode*/
+            if(sgf_append_block(file) < 0){
+                return -1;
+            }
+        }
     }
+
+    free(file);
+    file = NULL;
+
+    return 0;
+}
 
 
 /**********************************************************************
@@ -260,27 +361,32 @@ void init_sgf (void)
  *********************************************************************/
     
 int sgf_seek (OFILE* f, int pos){
-    printf("sgf_seek 1: current pos : %d new pos : %d\n", f->ptr, pos);
+    /*Load block if buffer is empty*/
+    if ((f->ptr % BLOCK_SIZE) == 0)
+    {
+        printf("sgf_seek loaded block into buffer\n");
+        sgf_read_bloc(f, f->ptr / BLOCK_SIZE);
+    }
     /*Position hors des bornes*/
     if(pos < 0 || pos > f->length - 1)
         return -1;
     /*La nouvelle position est un multiple de BLOCK_SIZE*/
     if(pos%BLOCK_SIZE == 0){
         f->ptr = pos;
-        printf("sgf_seek 2: current pos : %d new pos : %d\n", f->ptr, pos);
+        printf("sgf_seek : getchar will load block\n");
         return 0;
     }
     /*La nouvelle position se trouve dans le meme bloc*/
     if(pos/BLOCK_SIZE == f->ptr/BLOCK_SIZE){
         f->ptr = pos;
-        printf("sgf_seek 3: current pos : %d new pos : %d\n", f->ptr, pos);
+        printf("sgf_seek : same block\n");
         return 0;
     }
 
     /*Derniers recours on charge le nouveau bloc*/
     sgf_read_bloc(f, pos/BLOCK_SIZE);
     f->ptr = pos;
-    printf("sgf_seek 4: current pos : %d new pos : %d\n", f->ptr, pos);
+    printf("sgf_seek : load block\n");
 
     return 0;
 }

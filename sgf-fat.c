@@ -271,3 +271,13 @@ void create_empty_fat ()
     free(tab);
     }
 
+unsigned get_free_fat_blocks_count(){
+    unsigned nb_free_blocks = 0;
+    unsigned i;
+    for(i=0;i < fat.disk_size;i++){
+        /*printf("%d\n",i);*/
+        if(get_fat(i) == FAT_FREE) nb_free_blocks++;
+    }
+
+    return nb_free_blocks;
+}

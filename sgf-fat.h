@@ -14,6 +14,7 @@
 #define FAT_INODE               (-3)
 #define FAT_EOF                 (-4)
 
+
 /**********************************************************************
  Rechercher un bloc libre sur le disque en parcourant la FAT. Cette
  fonction renvoie 0 en cas d'erreur.
@@ -42,6 +43,11 @@
  *********************************************************************/
 
     void create_empty_fat (void);
+
+/*
+*
+*/
+    unsigned get_free_fat_blocks_count();
 
 
 #endif
