@@ -9,6 +9,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h> /*Question 6*/
 
 #include "sgf-disk.h"
 #include "sgf-fat.h"
@@ -51,7 +52,7 @@ int main() {
 	sgf_close(file);*/
 
 	/*Test du append*/
-	file = sgf_open("essai.txt", WRITE_MODE);
+	/*file = sgf_open("essai.txt", WRITE_MODE);
 	sgf_close(file);
 	unsigned i;
 	printf("Wrote in write_mode\n");
@@ -65,6 +66,20 @@ int main() {
 	while((c=sgf_getc(file)) != -1){
 		putchar('A');
 	}
+	sgf_close(file);*/
+
+	/*Test du sgf_write*/
+	file = sgf_open("essai.txt", WRITE_MODE);
+	char * data = "Une autre chaine de test pour voir si ça marche dans tous les cas\n";
+	//sgf_write(file, data, strlen(data));
+	sgf_close(file);
+	sgf_open("essai.txt", READ_MODE);
+	while((c=sgf_getc(file)) != -1){
+		putchar(c);
+	}
+	unsigned freeBlocksCount = get_free_fat_blocks_count();
+	printf("%d free blocks left\n", freeBlocksCount);
+	printf("%d bytes left\n", freeBlocksCount*BLOCK_SIZE);
 	sgf_close(file);
 	
 	

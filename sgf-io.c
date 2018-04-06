@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h> /*Question 6*/
 
 #include "sgf-disk.h"
 #include "sgf-data.h"
@@ -177,13 +178,22 @@ void sgf_remove(int adr_inode)
     int adr, suivant;
     /*TO DO Parcourir la table FAT a partir du premier bloc du fichier, free chaque bloc dans la FAT*/
     read_block(adr_inode, &b.data);
-    adr = b.inode.first;
 
+    /*Working version might fail if file has no data block yet*/
+    /*adr = b.inode.first;
     do{
         suivant = get_fat(adr);
         set_fat(adr, FAT_FREE);
         adr = suivant;
-    }while(suivant != FAT_EOF);
+    }while(suivant != FAT_EOF);*/
+
+    /*Second working version just in case file has no data block yet*/
+    suivant = adr = b.inode.first;
+    while(suivant != FAT_EOF){
+        suivant = get_fat(adr);
+        set_fat(adr, FAT_FREE);
+        adr = suivant;
+    }
 
     set_fat(adr_inode, FAT_FREE);
 
@@ -387,6 +397,31 @@ int sgf_seek (OFILE* f, int pos){
     sgf_read_bloc(f, pos/BLOCK_SIZE);
     f->ptr = pos;
     printf("sgf_seek : load block\n");
+
+    return 0;
+}
+
+int sgf_write(OFILE* f, char *data, int size){
+    /*Only allow sgf_write with write mode and append mode*/
+    assert(f->mode == WRITE_MODE || f->mode == APPEND_MODE);
+
+    /*Check weather or not disk space is large enough to fit new data*/
+    unsigned freeBlocksCount = get_free_fat_blocks_count();
+    if(size >= freeBlocksCount*BLOCK_SIZE){
+        fprintf(stderr, "[sgf_write] : Not enough space left to write desired data block\n");
+        return -1;
+    }
+
+    /*Iterate while all the data has not yet been written*/
+    /*TO DO Accelerate byte writting with memcpy*/
+    unsigned writtenBytes = 0;
+    while(writtenBytes < size){
+        f->buffer[f->ptr%BLOCK_SIZE] = *(data+writtenBytes++);
+        f->ptr++;
+        if((f->ptr%BLOCK_SIZE) == 0){
+            sgf_append_block(f);
+        }
+    }
 
     return 0;
 }
