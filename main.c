@@ -26,22 +26,26 @@ int main() {
 	list_directory();
 
 	/*Test de seek*/
-
-	/*
-	file = sgf_open("essai.txt", READ_MODE);
+	
+	/*file = sgf_open("essai.txt", READ_MODE);
 	int i = 8;
 	sgf_seek(file, i);
 	while ((c = sgf_getc(file)) > 0) {
 		i+=8;
-		sgf_seek(file,i);
+		if(sgf_seek(file,i) == -1) break;
 		printf("char:");
 		putchar(c);
 		printf("\n");
 	}
-	sgf_close(file);
-	*/
+	sgf_close(file);*/
+
+
+
+
+	
 
 	/*Test de l ecriture*/
+
 	/*file = sgf_open("essai.txt", WRITE_MODE);
 	sgf_puts(file, "Ceci est un petit texte ui occupe\n");
 	sgf_puts(file, "quelques blocs sur ce disque fictif.\n");
@@ -51,7 +55,13 @@ int main() {
 	sgf_puts(file, "Encore un peu de texte pour tester si ça marche ou pas il faut savoir si ça fonctionne ou pas\n");
 	sgf_close(file);*/
 
+
+
+
+
+
 	/*Test du append*/
+
 	/*file = sgf_open("essai.txt", WRITE_MODE);
 	sgf_close(file);
 	unsigned i;
@@ -68,18 +78,30 @@ int main() {
 	}
 	sgf_close(file);*/
 
+
+
+
+
 	/*Test du sgf_write*/
+
 	file = sgf_open("essai.txt", WRITE_MODE);
-	char * data = "Une autre chaine de test pour voir si ça marche dans tous les cas\n";
-	//sgf_write(file, data, strlen(data));
+	char data[BLOCK_SIZE*500];
+	memset(data,97,sizeof(data));
+	data[sizeof(data)-1] = '\n';
+	sgf_write(file, data, sizeof(data));
 	sgf_close(file);
 	sgf_open("essai.txt", READ_MODE);
 	while((c=sgf_getc(file)) != -1){
 		putchar(c);
 	}
-	unsigned freeBlocksCount = get_free_fat_blocks_count();
-	printf("%d free blocks left\n", freeBlocksCount);
-	printf("%d bytes left\n", freeBlocksCount*BLOCK_SIZE);
+	struct DiskStats diskStats = getDiskStats();
+	printf("%d EOF block(s)\n", diskStats.nb_eof_blocks);
+	printf("%d INODE block(s)\n", diskStats.nb_inode_blocks);
+	printf("%d RESERVED block(s)\n", diskStats.nb_reserved_blocks);
+	printf("%d data block(s)\n", diskStats.nb_data_blocks);
+	printf("%d free block(s) left\n", diskStats.nb_free_blocks);
+	printf("%f kib(s) left, %d byte(s) left\n", diskStats.nb_free_bytes/1024.0, diskStats.nb_free_bytes);
+	displayFatMap();
 	sgf_close(file);
 	
 	

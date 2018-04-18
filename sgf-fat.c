@@ -206,7 +206,7 @@ int alloc_block (void)
  *********************************************************************/
 
 void create_empty_fat ()
-    {
+{
     int fat_size_in_bytes;
     int fat_size_in_blocks;
     TBLOCK super_bloc;
@@ -269,7 +269,16 @@ void create_empty_fat ()
     printf("writing empty FAT done (block %d to %d)\n", 1, adr_rep - 1);
 
     free(tab);
-    }
+}
+
+void initDiskStats(struct DiskStats* diskStats){
+    diskStats->nb_free_blocks = 0;
+    diskStats->nb_reserved_blocks = 0;
+    diskStats->nb_eof_blocks = 0;
+    diskStats->nb_inode_blocks = 0;
+    diskStats->nb_data_blocks = 0;
+    diskStats->nb_free_bytes = 0;
+}
 
 unsigned get_free_fat_blocks_count(){
     unsigned nb_free_blocks = 0;
@@ -280,4 +289,38 @@ unsigned get_free_fat_blocks_count(){
     }
 
     return nb_free_blocks;
+}
+
+struct DiskStats getDiskStats(){
+    struct DiskStats diskStats;
+    initDiskStats(&diskStats);
+    unsigned i;
+    for(i=0;i < fat.disk_size;i++){
+        int fat_entry = get_fat(i);
+        if(fat_entry > 0) diskStats.nb_data_blocks++;
+        else if(fat_entry == FAT_FREE) diskStats.nb_free_blocks++;
+        else if(fat_entry == FAT_RESERVED) diskStats.nb_reserved_blocks++;
+        else if(fat_entry == FAT_EOF) diskStats.nb_eof_blocks++;
+        else if(fat_entry == FAT_INODE) diskStats.nb_inode_blocks++;
+    }
+
+    diskStats.nb_free_bytes = BLOCK_SIZE*diskStats.nb_free_blocks;
+
+    return diskStats;
+}
+
+void displayFatMap(){
+    unsigned i;
+    for(i=0;i < fat.disk_size;i++){
+        if(i%64 == 0) printf("%d ", i);
+        int fat_entry = get_fat(i);
+        if(fat_entry > 0) printf("D");
+        else if(fat_entry == FAT_FREE) printf("F"); 
+        else if(fat_entry == FAT_RESERVED) printf("R");
+        else if(fat_entry == FAT_EOF) printf("E");
+        else if(fat_entry == FAT_INODE) printf("I");
+        if((i+1)%64 == 0){
+            printf("\n");
+        }
+    }
 }

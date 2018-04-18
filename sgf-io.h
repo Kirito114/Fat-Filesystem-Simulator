@@ -27,6 +27,9 @@ struct OFILE            /* "Un fichier ouvert"                  */
 
     int   mode;         /* READ_MODE ou WRITE_MODE              */
     BLOCK buffer;       /* buffer contenant le bloc courant     */
+
+    int currentBlocNum; /* Numero du bloc logique courant */
+    int currentBlocAdr; /* Adresse du bloc physique correspondant au bloc logique courant */
     };
 
 typedef struct OFILE OFILE;

@@ -49,5 +49,18 @@
 */
     unsigned get_free_fat_blocks_count();
 
+    struct DiskStats getDiskStats();
+
+    void displayFatMap();
+
+    struct DiskStats{
+    unsigned nb_free_blocks;
+    unsigned nb_reserved_blocks;
+    unsigned nb_eof_blocks;
+    unsigned nb_inode_blocks;
+    unsigned nb_data_blocks;
+    unsigned nb_free_bytes;
+	};
+
 
 #endif
